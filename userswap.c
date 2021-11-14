@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <math.h>
 
 typedef struct PAGE
 {
@@ -17,15 +18,15 @@ typedef struct PAGE
   int backingFile;
   bool isResident;
   bool isDirty;
-  struct page *next;
+  page *next;
 } page;
 
 typedef struct ALLOCATEDMEM
 {
   void *addr;
   int size;
-  struct page *head;
-  struct allocatedMem *next;
+  page *head;
+  allocatedMem *next;
 } allocatedMem;
 
 bool isRegistered = false;
