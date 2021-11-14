@@ -68,9 +68,6 @@ void *userswap_alloc(size_t size) {
       curr = curr->next;
     }
   }
-  if (curr == NULL) {
-    return NULL;
-  }
   for (int i = 0; i < numPages; i++) {
     page *p = malloc(sizeof(page));
     p->pid = getpid();
