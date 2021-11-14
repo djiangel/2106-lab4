@@ -10,15 +10,14 @@
 #include <sys/stat.h>
 #include <math.h>
 
-typedef struct PAGE
-{
+typedef struct PAGE {
   pid_t pid;
   void *addr;
   int offset;
   int backingFile;
   bool isResident;
   bool isDirty;
-  PAGE *next;
+  struct PAGE *next;
 } page;
 
 typedef struct ALLOCATEDMEM
@@ -26,7 +25,7 @@ typedef struct ALLOCATEDMEM
   void *addr;
   int size;
   page *head;
-  ALLOCATEDMEM *next;
+  struct ALLOCATEDMEM *next;
 } allocatedMem;
 
 bool isRegistered = false;
