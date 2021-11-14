@@ -18,7 +18,7 @@ typedef struct PAGE
   int backingFile;
   bool isResident;
   bool isDirty;
-  page *next;
+  PAGE *next;
 } page;
 
 typedef struct ALLOCATEDMEM
@@ -26,7 +26,7 @@ typedef struct ALLOCATEDMEM
   void *addr;
   int size;
   page *head;
-  allocatedMem *next;
+  ALLOCATEDMEM *next;
 } allocatedMem;
 
 bool isRegistered = false;
