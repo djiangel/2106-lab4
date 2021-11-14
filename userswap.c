@@ -1,10 +1,13 @@
 #include "userswap.h"
-#include <math.h>
-#include <stdbool.h>
 #include <stdio.h>
+#include <signal.h>
+#include <unistd.h>
 #include <stdlib.h>
-#include <string.h>
 #include <sys/mman.h>
+#include <string.h>
+#include <stdbool.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 typedef struct PAGE
 {
@@ -45,8 +48,7 @@ void *userswap_alloc(size_t size) {
   double numPages = ceil(size/pageSize);
   int pageMem = numPages * pageSize;
   void *addr = mmap(NULL, pageMem, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-
-  allocatedMem *mem = malloc(sizeof(allocatedMem));
+  allocatedMem *mem = (allocatedMem *)malloc(sizeof(allocatedMem));
   mem->addr = addr;
   mem->size = pageMem;
 
@@ -67,7 +69,7 @@ void *userswap_alloc(size_t size) {
     }
   }
   if (curr == NULL) {
-    return;
+    return NULL;
   }
   for (int i = 0; i < numPages; i++) {
     page *p = malloc(sizeof(page));
