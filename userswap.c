@@ -44,6 +44,7 @@ void userswap_set_size(size_t size) {
 }
 
 void *userswap_alloc(size_t size) {
+  printf("in alloc");
   registerHandler();
   double numPages = ceil(size/pageSize);
   int pageMem = numPages * pageSize;
@@ -94,6 +95,7 @@ void *userswap_alloc(size_t size) {
 }
 
 void userswap_free(void *mem) {
+  printf("in free");
   allocatedMem *curr = head;
   while (curr != NULL) {
     if (curr->addr == mem){
@@ -139,6 +141,7 @@ void *userswap_map(int fd, size_t size) {
 }
 
 void registerHandler() {
+  printf("register");
   if (isRegistered) {
     return;
   }
@@ -151,6 +154,7 @@ void registerHandler() {
 }
 
 void pageFaultHandler(int sig, siginfo_t *siginfo, void *dont_care) {
+  printf("pagefault");
   if (sig == SIGSEGV && siginfo != NULL) {
     void *addr = siginfo->si_addr;
     page *p = getPage(addr);
@@ -159,6 +163,7 @@ void pageFaultHandler(int sig, siginfo_t *siginfo, void *dont_care) {
 }
 
 page *getPage(void *addr) {
+  printf("getpage");
   allocatedMem *curr = head;
   page *p = NULL;
   while (curr != NULL) {
