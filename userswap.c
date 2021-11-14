@@ -48,7 +48,7 @@ void *userswap_alloc(size_t size) {
   double numPages = ceil(size/pageSize);
   int pageMem = numPages * pageSize;
   void *addr = mmap(NULL, pageMem, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-  allocatedMem *mem = (allocatedMem *)malloc(sizeof(allocatedMem));
+  allocatedMem *mem = malloc(sizeof(allocatedMem));
   mem->addr = addr;
   mem->size = pageMem;
 
@@ -85,9 +85,9 @@ void *userswap_alloc(size_t size) {
     if (currPage == NULL) {
       curr->head = p;
     } else {
-      while (curr != NULL) {
-        prev = curr;
-        curr = curr->next;
+      while (currPage != NULL) {
+        prev = currPage;
+        currPage = currPage->next;
       }
       prev->next = p;
     }
