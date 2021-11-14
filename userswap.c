@@ -61,38 +61,36 @@ void *userswap_alloc(size_t size) {
   }
 
   allocatedMem *curr = head;
-  if (addr == NULL) {
-    return;
-  }
-  while (curr != NULL) {
-    if (addr >= curr->addr && addr < curr->addr+curr->size) {
-      break;
-    } else {
-      curr = curr->next;
-    }
-  }
-  if (curr == NULL) {
-    return;
-  }
-  for (int i = 0; i < numPages; i++) {
-    page *p = malloc(sizeof(page));
-    p->pid = getpid();
-    p->addr = addr;
-    p->offset = offset + addr - (addr+pageSize*i);
-    p->backingFile = -1;
-    p->isResident = false;
-    p->isDirty = false;
-    p->next = NULL;
-    page *currPage = curr->head;
-    page *prev = NULL;
-    if (currPage == NULL) {
-      curr->head = p;
-    } else {
-      while (currPage != NULL) {
-        prev = currPage;
-        currPage = currPage->next;
+  if (addr != NULL) {
+    while (curr != NULL) {
+      if (addr >= curr->addr && addr < curr->addr+curr->size) {
+        break;
+      } else {
+        curr = curr->next;
       }
-      prev->next = p;
+    }
+    if (curr != NULL) {
+      for (int i = 0; i < numPages; i++) {
+        page *p = malloc(sizeof(page));
+        p->pid = getpid();
+        p->addr = addr;
+        p->offset = offset + addr - (addr+pageSize*i);
+        p->backingFile = -1;
+        p->isResident = false;
+        p->isDirty = false;
+        p->next = NULL;
+        page *currPage = curr->head;
+        page *prev = NULL;
+        if (currPage == NULL) {
+          curr->head = p;
+        } else {
+          while (currPage != NULL) {
+            prev = currPage;
+            currPage = currPage->next;
+          }
+          prev->next = p;
+        }
+      }
     }
   }
   offset = offset +  numPages * pageSize;
