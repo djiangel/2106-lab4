@@ -61,12 +61,18 @@ void *userswap_alloc(size_t size) {
   }
 
   allocatedMem *curr = head;
+  if (addr == NULL) {
+    return;
+  }
   while (curr != NULL) {
     if (addr >= curr->addr && addr < curr->addr+curr->size) {
       break;
     } else {
       curr = curr->next;
     }
+  }
+  if (curr == NULL) {
+    return;
   }
   for (int i = 0; i < numPages; i++) {
     page *p = malloc(sizeof(page));
@@ -94,6 +100,9 @@ void *userswap_alloc(size_t size) {
 }
 
 void userswap_free(void *mem) {
+  if (mem == NULL) {
+    return;
+  }
   allocatedMem *curr = head;
   while (curr != NULL) {
     if (curr->addr == mem){
@@ -113,7 +122,9 @@ void userswap_free(void *mem) {
     free(p);
   }
 
-  if (head != NULL) {
+  if (head == NULL) {
+    return;
+  } else {
     allocatedMem *h = head;
     allocatedMem *prev = NULL;
     while (h->addr != curr->addr) {
@@ -143,8 +154,8 @@ void registerHandler() {
     return;
   }
   memset(&sa, 0, sizeof(struct sigaction));
-  sa.sa_flags = SA_SIGINFO | SA_RESTART;
   sigemptyset(&sa.sa_mask);
+  sa.sa_flags = SA_SIGINFO | SA_RESTART;
   sa.sa_sigaction = pageFaultHandler;
   sigaction(SIGSEGV, &sa, NULL);
   isRegistered = true;
