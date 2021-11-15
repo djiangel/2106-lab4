@@ -31,7 +31,6 @@ typedef struct allocatedMem
 
 struct sigaction sa;
 struct sigaction prevsa;
-bool isRegistered = false;
 int swapFile;
 int pageSize = 4096;
 int offset = 0;
@@ -146,9 +145,6 @@ void *userswap_map(int fd, size_t size) {
 }
 
 void registerHandler() {
-  if (isRegistered) {
-    return;
-  }
   struct sigaction sa;
   memset(&sa, 0, sizeof(sigaction));
   sa.sa_flags = SA_SIGINFO | SA_RESTART;
