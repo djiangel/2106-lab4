@@ -141,7 +141,53 @@ void userswap_free(void *mem) {
 }
 
 void *userswap_map(int fd, size_t size) {
-  return NULL;
+  registerHandler();
+  int numPages = (int) ceil(size/pageSize);
+  int pageMem = numPages * pageSize;
+  void *addr = mmap(NULL, pageMem, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  int code;
+  code = pread(fd, addr, pageMem, 0);
+  if (code == -1) {
+    exit(0);
+  }
+  mprotect(addr, pageMem, PROT_NONE);
+  allocateMem(addr, pageMem);
+
+  allocatedMem *curr = head;
+  if (addr != NULL) {
+    while (curr != NULL) {
+      if (addr >= curr->addr && addr < (curr->addr+curr->size)) {
+        break;
+      } else {
+        curr = curr->next;
+      }
+    }
+    if (curr != NULL) {
+      for (int i = 0; i < numPages; i++) {
+        page *p = malloc(sizeof(page));
+        p->pid = getpid();
+        p->addr = addr+pageSize*i;
+        p->offset = offset + (addr+pageSize*i) - addr;
+        p->fd = fd;
+        p->isResident = false;
+        p->isDirty = false;
+        p->next = NULL;
+        page *currPage = curr->head;
+        page *prev = NULL;
+        if (currPage == NULL) {
+          curr->head = p;
+        } else {
+          while (currPage != NULL) {
+            prev = currPage;
+            currPage = currPage->next;
+          }
+          prev->next = p;
+        }
+      }
+    }
+  }
+  offset = offset + numPages * pageSize;
+  return addr;
 }
 
 void registerHandler() {
@@ -170,7 +216,11 @@ void handler(int sig, siginfo_t *siginfo, void *dont_care) {
       if (p->isDirty) {
         mprotect(p->addr, pageSize, PROT_READ | PROT_WRITE);
         int code;
-        code = pread(swapFile, p->addr, pageSize, p->offset);
+        if (p->fd == -1) {
+          code = pread(swapFile, p->addr, pageSize, p->offset);
+        } else {
+          code = pread(p->fd, p->addr, pageSize, p->offset);
+        }
         if (code == -1) {
           exit(0);
         }
@@ -207,7 +257,11 @@ void handler(int sig, siginfo_t *siginfo, void *dont_care) {
         curr = NULL;
         if (evictPage->isDirty) {
           int code;
-          code = pwrite(swapFile, evictPage->addr, pageSize, evictPage->offset);
+          if (evictPage->fd == -1) {
+            code = pwrite(swapFile, evictPage->addr, pageSize, evictPage->offset);
+          } else {
+            code = pwrite(evictPage->fd, evictPage->addr, pageSize, evictPage->offset);
+          }
           if (code == -1) {
             exit(0);
           }
