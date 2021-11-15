@@ -25,7 +25,7 @@ typedef struct allocatedMem
   void *addr;
   int size;
   page *head;
-  struct page *next;
+  struct allocatedMem *next;
 } allocatedMem;
 
 struct sigaction sa;
@@ -37,6 +37,7 @@ allocatedMem *tail = NULL;
 void registerHandler();
 void pageFaultHandler(int sig, siginfo_t *siginfo, void *dont_care);
 page *getPage(void *addr);
+void allocateMem(void *addr, size_t size);
 
 void userswap_set_size(size_t size) {
 
