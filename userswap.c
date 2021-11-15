@@ -169,11 +169,14 @@ void handler(int sig, siginfo_t *siginfo, void *dont_care) {
     } else {
       if (p->isDirty) {
         mprotect(p->addr, pageSize, PROT_READ | PROT_WRITE);
-        int read;
+        int code;
         if (p->fd == -1) {
-          read = pread(swapFile, p->addr, pageSize, p->offset);
+          code = pread(swapFile, p->addr, pageSize, p->offset);
         } else {
-          read = pread(p->fd, p->addr, pageSize, p->offset);
+          code = pread(p->fd, p->addr, pageSize, p->offset);
+        }
+        if (code == -1) {
+          exit(0);
         }
         mprotect(p->addr, pageSize, PROT_NONE);
         madvise(p->addr, pageSize, MADV_DONTNEED);
@@ -208,12 +211,15 @@ void handler(int sig, siginfo_t *siginfo, void *dont_care) {
         free(curr);
         curr = NULL;
         if (evictPage->isDirty) {
-          int write;
+          int code;
           if (evictPage->fd == -1) {
-            write = pwrite(swapFile, evictPage->addr, pageSize, evictPage->offset);
+            code = pwrite(swapFile, evictPage->addr, pageSize, evictPage->offset);
           }
           else {
-            write = pwrite(evictPage->fd, evictPage->addr, pageSize, evictPage->offset);
+            code = pwrite(evictPage->fd, evictPage->addr, pageSize, evictPage->offset);
+          }
+          if (code == -1) {
+            exit(0);
           }
           madvise(evictPage->addr, pageSize, MADV_DONTNEED);
         }
