@@ -29,6 +29,7 @@ typedef struct allocatedMem
 } allocatedMem;
 
 struct sigaction sa;
+struct sigaction prevsa;
 int pageSize = 4096;
 int offset = 0;
 allocatedMem *head = NULL;
@@ -141,14 +142,22 @@ void registerHandler() {
   struct sigaction sa;
   memset(&sa, 0, sizeof(sigaction));
   sa.sa_flags = SA_SIGINFO | SA_RESTART;
-  sa.sa_sigaction = pageFaultHandler;
+  sa.sa_sigaction = handler;
   sigaction(SIGSEGV, &sa, NULL);
 }
 
-void pageFaultHandler(int sig, siginfo_t *siginfo, void *dont_care) {
+void handler(int sig, siginfo_t *siginfo, void *dont_care) {
   if (sig == SIGSEGV && siginfo != NULL) {
     void *addr = siginfo->si_addr;
     page *p = getPage(addr);
+    if (p == NULL) {
+      sigaction(SIGSEGV, &prevsa, NULL);
+      return;
+    }
+    if (p->isResident) {
+      mprotect(p->addr, 4096, PROT_READ | PROT_WRITE);
+      p->isDirty = true;
+    }
     mprotect(p->addr, pageSize, PROT_READ);
   }
 }
