@@ -10,27 +10,21 @@ int main(int argc, char *argv[]) {
   (void)argv;
   const _Bool use_userswap = 1;
   const size_t memory_size = 10 * 1024 * 1024;
-  printf("here1");
   volatile size_t *const mem = use_userswap ? userswap_alloc(memory_size) : malloc(memory_size);
   if (!mem) {
     return 1;
   }
-  printf("here2");
 
   size_t scratch = 0;
   for (size_t i = 0; i < memory_size / sizeof(size_t); ++i) {
     scratch += mem[i];
   }
 
-  printf("here3");
-
   if (use_userswap) {
     userswap_free((void *)mem);
   } else {
     free((void *)mem);
   }
-
-  printf("here4");
 
   printf("%zu\n", scratch);
 

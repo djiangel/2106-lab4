@@ -10,25 +10,24 @@
 #include <sys/stat.h>
 #include <math.h>
 
-typedef struct PAGE {
+typedef struct page {
   pid_t pid;
   void *addr;
   int offset;
-  int backingFile;
+  int fd;
   bool isResident;
   bool isDirty;
-  struct PAGE *next;
+  struct page *next;
 } page;
 
-typedef struct ALLOCATEDMEM
+typedef struct allocatedMem
 {
   void *addr;
   int size;
   page *head;
-  struct ALLOCATEDMEM *next;
+  struct page *next;
 } allocatedMem;
 
-bool isRegistered = false;
 struct sigaction sa;
 int pageSize = 4096;
 int offset = 0;
@@ -48,22 +47,12 @@ void *userswap_alloc(size_t size) {
   int numPages = (int) ceil(size/pageSize);
   int pageMem = numPages * pageSize;
   void *addr = mmap(NULL, pageMem, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-  allocatedMem *mem = malloc(sizeof(allocatedMem));
-  mem->addr = addr;
-  mem->size = pageMem;
-
-  if (head == NULL) {
-    head = mem;
-    mem->next = NULL;
-  } else {
-    mem->next = head;
-    head = mem;
-  }
+  allocateMem(addr, pageMem);
 
   allocatedMem *curr = head;
   if (addr != NULL) {
     while (curr != NULL) {
-      if (addr >= curr->addr && addr < curr->addr+curr->size) {
+      if (addr >= curr->addr && addr < (curr->addr+curr->size)) {
         break;
       } else {
         curr = curr->next;
@@ -73,9 +62,9 @@ void *userswap_alloc(size_t size) {
       for (int i = 0; i < numPages; i++) {
         page *p = malloc(sizeof(page));
         p->pid = getpid();
-        p->addr = addr;
-        p->offset = offset + addr - (addr+pageSize*i);
-        p->backingFile = -1;
+        p->addr = addr+pageSize*i;
+        p->offset = offset + (addr+pageSize*i) - addr;
+        p->fd = -1;
         p->isResident = false;
         p->isDirty = false;
         p->next = NULL;
@@ -93,7 +82,7 @@ void *userswap_alloc(size_t size) {
       }
     }
   }
-  offset = offset +  numPages * pageSize;
+  offset = offset + numPages * pageSize;
   return addr;
 }
 
@@ -148,15 +137,11 @@ void *userswap_map(int fd, size_t size) {
 }
 
 void registerHandler() {
-  if (isRegistered) {
-    return;
-  }
-  memset(&sa, 0, sizeof(struct sigaction));
-  sigemptyset(&sa.sa_mask);
+  struct sigaction sa;
+  memset(&sa, 0, sizeof(sigaction));
   sa.sa_flags = SA_SIGINFO | SA_RESTART;
   sa.sa_sigaction = pageFaultHandler;
   sigaction(SIGSEGV, &sa, NULL);
-  isRegistered = true;
 }
 
 void pageFaultHandler(int sig, siginfo_t *siginfo, void *dont_care) {
@@ -188,4 +173,17 @@ page *getPage(void *addr) {
     }
   }
   return NULL;
+}
+
+void allocateMem(void *addr, size_t size) {
+  allocatedMem *mem = malloc(sizeof(allocatedMem));
+  mem->addr = addr;
+  mem->size = size;
+  if (head == NULL) {
+    head = mem;
+    mem->next = NULL;
+  } else {
+    mem->next = head;
+    head = mem;
+  }
 }
