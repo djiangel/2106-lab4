@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <math.h>
+#include <fcntl.h>
 
 typedef struct page {
   pid_t pid;
@@ -30,6 +31,7 @@ typedef struct allocatedMem
 
 struct sigaction sa;
 struct sigaction prevsa;
+int swapFile;
 int pageSize = 4096;
 int offset = 0;
 int totalMem = 0;
@@ -45,7 +47,7 @@ void allocateMem(void *addr, size_t size);
 
 void userswap_set_size(size_t size) {
   int numPages = (int) ceil(size/pageSize);
-  LORM = numPages * 4096;
+  LORM = numPages * pageSize;
 }
 
 void *userswap_alloc(size_t size) {
@@ -148,6 +150,9 @@ void registerHandler() {
   sa.sa_flags = SA_SIGINFO | SA_RESTART;
   sa.sa_sigaction = handler;
   sigaction(SIGSEGV, &sa, NULL);
+  char pathname[30];
+  sprintf(pathname, "%d.swap", getpid());
+  swapFile = open(pathname, O_RDWR | O_TRUNC | O_CREAT, 0777);
 }
 
 void handler(int sig, siginfo_t *siginfo, void *dont_care) {
@@ -159,9 +164,16 @@ void handler(int sig, siginfo_t *siginfo, void *dont_care) {
       return;
     }
     if (p->isResident) {
-      mprotect(p->addr, 4096, PROT_READ | PROT_WRITE);
+      mprotect(p->addr, pageSize, PROT_READ | PROT_WRITE);
       p->isDirty = true;
     } else {
+      if (p->isDirty) {
+        mprotect(p->addr, pageSize, PROT_READ | PROT_WRITE);
+        pread(swapFile, p->addr, pageSize, p->offset);
+        mprotect(p->addr, pageSize, PROT_NONE);
+        madvise(p->addr, pageSize, MADV_DONTNEED);
+        p->isDirty = false;
+      }
       if (totalMem+pageSize < LORM) {
         totalMem += pageSize;
         p->isResident = true;
@@ -190,7 +202,17 @@ void handler(int sig, siginfo_t *siginfo, void *dont_care) {
         page *evictPage = getPage(curr->addr);
         free(curr);
         curr = NULL;
-        mprotect(evictPage->addr, 4096, PROT_NONE);
+        if (evictPage->isDirty) {
+          int res;
+          if (evictPage->fd == -1) {
+            pwrite(swapFile, evictPage->addr, pageSize, evictPage->offset);
+          }
+          else {
+            pwrite(evictPage->fd, evictPage->addr, pageSize, evictPage->offset);
+          }
+          madvise(evictPage->addr, pageSize, MADV_DONTNEED);
+        }
+        mprotect(evictPage->addr, pageSize, PROT_NONE);
         evictPage->isResident = false;
         page *queuePage = malloc(sizeof(page));
         queuePage->addr = p->addr;
@@ -202,7 +224,7 @@ void handler(int sig, siginfo_t *siginfo, void *dont_care) {
         queuePage->next = pageHead;
         pageHead = queuePage;
         p->isResident = true;
-        mprotect(p->addr, 4096, PROT_READ);
+        mprotect(p->addr, pageSize, PROT_READ);
       }
     }
   }
