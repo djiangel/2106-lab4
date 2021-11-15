@@ -111,6 +111,16 @@ void userswap_free(void *mem) {
   }
   page *currPage = curr->head;
   while (currPage != NULL) {
+    if (currPage->isDirty && currPage->fd != -1 && currPage->isResident) {
+      mprotect(currPage->addr, pageSize, PROT_READ | PROT_WRITE);
+      int code;
+      code = pwrite(currPage->fd, currPage->addr, pageSize, currPage->offset);
+      if (code == -1) {
+        exit(0);
+      }
+      mprotect(currPage->addr, pageSize, PROT_NONE);
+    }
+    totalMem -= pageSize;
     munmap(currPage->addr, pageSize);
     page *p = currPage;
     currPage = currPage->next;
