@@ -32,8 +32,11 @@ struct sigaction sa;
 struct sigaction prevsa;
 int pageSize = 4096;
 int offset = 0;
+int totalMem = 0;
+int LORM = 8626176;
 allocatedMem *head = NULL;
 allocatedMem *tail = NULL;
+page *pageHead = NULL;
 
 void registerHandler();
 void handler(int sig, siginfo_t *siginfo, void *dont_care);
@@ -41,7 +44,8 @@ page *getPage(void *addr);
 void allocateMem(void *addr, size_t size);
 
 void userswap_set_size(size_t size) {
-
+  int numPages = (int) ceil(size/pageSize);
+  LORM = numPages * 4096;
 }
 
 void *userswap_alloc(size_t size) {
@@ -158,8 +162,48 @@ void handler(int sig, siginfo_t *siginfo, void *dont_care) {
       mprotect(p->addr, 4096, PROT_READ | PROT_WRITE);
       p->isDirty = true;
     } else {
-      p->isResident = true;
-      mprotect(p->addr, pageSize, PROT_READ);
+      if (totalMem+pageSize < LORM) {
+        totalMem += pageSize;
+        p->isResident = true;
+        mprotect(p->addr, pageSize, PROT_READ);
+        page *queuePage = malloc(sizeof(page));
+        queuePage->addr = p->addr;
+        queuePage->pid = p->pid;
+        queuePage->offset = 0;
+        queuePage->fd = -1;
+        queuePage->isResident = true;
+        queuePage->isDirty = false;
+        queuePage->next = pageHead;
+        pageHead = queuePage;
+      } else {
+        page *curr = pageHead;
+        page *prev = NULL;
+        while (curr->next != NULL) {
+          prev = curr;
+          curr = curr->next;
+        }
+        if (prev != NULL) {
+          prev->next = NULL;
+        } else {
+          pageHead = NULL;
+        }
+        page *evictPage = getPage(curr->addr);
+        free(curr);
+        curr = NULL;
+        mprotect(evictPage->addr, 4096, PROT_NONE);
+        evictPage->isResident = false;
+        page *queuePage = malloc(sizeof(page));
+        queuePage->addr = p->addr;
+        queuePage->pid = p->pid;
+        queuePage->offset = 0;
+        queuePage->fd = -1;
+        queuePage->isResident = true;
+        queuePage->isDirty = false;
+        queuePage->next = pageHead;
+        pageHead = queuePage;
+        p->isResident = true;
+        mprotect(p->addr, 4096, PROT_READ);
+      }
     }
   }
 }
@@ -177,7 +221,6 @@ page *getPage(void *addr) {
   }
   
   while (p != NULL) {
-
     if (addr >= p->addr && addr < p->addr + pageSize) {
       return p;
     } else {
