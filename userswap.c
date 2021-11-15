@@ -153,7 +153,6 @@ void registerHandler() {
   char fileName[40];
   sprintf(fileName, "./%d.swap", getpid());
   swapFile = open(fileName, O_RDWR | O_TRUNC | O_CREAT, 0777);
-  isRegistered = true;
 }
 
 void handler(int sig, siginfo_t *siginfo, void *dont_care) {
