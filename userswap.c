@@ -158,6 +158,7 @@ void handler(int sig, siginfo_t *siginfo, void *dont_care) {
       mprotect(p->addr, 4096, PROT_READ | PROT_WRITE);
       p->isDirty = true;
     }
+    p->isResident = true;
     mprotect(p->addr, pageSize, PROT_READ);
   }
 }
