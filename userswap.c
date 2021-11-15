@@ -36,7 +36,7 @@ allocatedMem *head = NULL;
 allocatedMem *tail = NULL;
 
 void registerHandler();
-void pageFaultHandler(int sig, siginfo_t *siginfo, void *dont_care);
+void handler(int sig, siginfo_t *siginfo, void *dont_care);
 page *getPage(void *addr);
 void allocateMem(void *addr, size_t size);
 
