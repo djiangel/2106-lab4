@@ -154,9 +154,9 @@ void registerHandler() {
   sa.sa_flags = SA_SIGINFO | SA_RESTART;
   sa.sa_sigaction = handler;
   sigaction(SIGSEGV, &sa, NULL);
-  char pathname[30];
-  sprintf(pathname, "%d.swap", getpid());
-  swapFile = open(pathname, O_RDWR | O_TRUNC | O_CREAT, 0777);
+  char fileName[40];
+  sprintf(fileName, "./%d.swap", getpid());
+  swapFile = open(fileName, O_RDWR | O_TRUNC | O_CREAT, 0777);
   isRegistered = true;
 }
 
@@ -175,16 +175,11 @@ void handler(int sig, siginfo_t *siginfo, void *dont_care) {
       if (p->isDirty) {
         mprotect(p->addr, pageSize, PROT_READ | PROT_WRITE);
         int code;
-        if (p->fd == -1) {
-          code = pread(swapFile, p->addr, pageSize, p->offset);
-        } else {
-          code = pread(p->fd, p->addr, pageSize, p->offset);
-        }
+        code = pread(swapFile, p->addr, pageSize, p->offset);
         if (code == -1) {
           exit(0);
         }
         mprotect(p->addr, pageSize, PROT_NONE);
-        madvise(p->addr, pageSize, MADV_DONTNEED);
         p->isDirty = false;
       }
       if (totalMem+pageSize < LORM) {
@@ -217,12 +212,7 @@ void handler(int sig, siginfo_t *siginfo, void *dont_care) {
         curr = NULL;
         if (evictPage->isDirty) {
           int code;
-          if (evictPage->fd == -1) {
-            code = pwrite(swapFile, evictPage->addr, pageSize, evictPage->offset);
-          }
-          else {
-            code = pwrite(evictPage->fd, evictPage->addr, pageSize, evictPage->offset);
-          }
+          code = pwrite(swapFile, evictPage->addr, pageSize, evictPage->offset);
           if (code == -1) {
             exit(0);
           }
